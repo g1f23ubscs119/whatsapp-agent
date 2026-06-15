@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>WhatsApp AI Agent</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#0a0f1e;--surface:#111827;--s2:#1a2235;--border:#1f2d45;
+      --green:#25d366;--blue:#3b82f6;--text:#e2e8f0;--muted:#64748b}
+    body{font-family:system-ui,sans-serif;background:var(--bg);
+      color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+    header{background:var(--surface);border-bottom:1px solid var(--border);
+      padding:14px 24px;display:flex;align-items:center;justify-content:space-between}
+    .logo{font-weight:700;font-size:17px;display:flex;align-items:center;gap:10px}
+    .logo-icon{background:var(--green);width:32px;height:32px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;font-size:18px}
+    .right{display:flex;align-items:center;gap:14px;font-size:13px}
+    .toggle{position:relative;width:52px;height:28px;cursor:pointer}
+    .toggle input{opacity:0;width:0;height:0}
+    .slider{position:absolute;inset:0;background:var(--border);border-radius:28px;transition:.3s}
+    .slider::before{content:'';position:absolute;left:3px;top:3px;width:22px;height:22px;
+      background:#fff;border-radius:50%;transition:.3s}
+    .toggle input:checked+.slider{background:var(--green)}
+    .toggle input:checked+.slider::before{transform:translateX(24px)}
+    .pill{font-size:12px;padding:4px 12px;border-radius:20px;font-weight:500;
+      background:rgba(100,116,139,.15);color:var(--muted)}
+    .pill.on{background:rgba(37,211,102,.12);color:var(--green)}
+    .main{display:flex;flex:1;overflow:hidden}
+    .sidebar{width:280px;border-right:1px solid var(--border);
+      background:var(--surface);display:flex;flex-direction:column}
+    .sidebar h3{padding:13px 16px;font-size:11px;font-weight:600;color:var(--muted);
+      text-transform:uppercase;letter-spacing:.8px;border-bottom:1px solid var(--border)}
+    .clist{overflow-y:auto;flex:1}
+    .contact{padding:13px 16px;cursor:pointer;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:11px;transition:background .15s}
+    .contact:hover,.contact.active{background:var(--s2)}
+    .contact.active{border-left:3px solid var(--green)}
+    .av{width:40px;height:40px;border-radius:50%;
+      background:linear-gradient(135deg,#128c4e,#3b82f6);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:700;font-size:15px;flex-shrink:0}
+    .ci{flex:1;min-width:0}
+    .cn{font-size:14px;font-weight:600}
+    .cp{font-size:12px;color:var(--muted);white-space:nowrap;
+      overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+    .cb{font-size:11px;color:var(--green);
+      background:rgba(37,211,102,.1);padding:2px 7px;border-radius:10px}
+    .empty{padding:40px 16px;text-align:center;color:var(--muted);
+      font-size:13px;line-height:1.8}
+    .panel{flex:1;display:flex;flex-direction:column}
+    .chat-head{padding:14px 20px;background:var(--surface);
+      border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+    .ct{font-weight:600;font-size:15px}
+    .cph{font-size:12px;color:var(--muted);margin-top:2px}
+    .msgs{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:8px}
+    .mw{display:flex}.mw.out{justify-content:flex-end}
+    .bbl{max-width:68%;padding:9px 13px;border-radius:14px;
+      font-size:14px;line-height:1.5}
+    .bbl.in{background:#1a2235;border-bottom-left-radius:3px}
+    .bbl.out{background:#0d3b2e;border-bottom-right-radius:3px}
+    .bm{font-size:10px;color:var(--muted);margin-top:3px;text-align:right}
+    .ai{font-size:10px;background:rgba(59,130,246,.2);
+      color:var(--blue);padding:1px 5px;border-radius:3px;margin-left:4px}
+    .send-box{padding:12px 16px;background:var(--surface);
+      border-top:1px solid var(--border);display:flex;gap:8px}
+    textarea{flex:1;background:var(--bg);border:1px solid var(--border);
+      border-radius:10px;padding:9px 13px;color:var(--text);
+      font-family:inherit;font-size:14px;resize:none;outline:none;
+      min-height:40px;max-height:100px;transition:border-color .2s}
+    textarea:focus{border-color:var(--green)}
+    .sbtn{background:var(--green);border:none;border-radius:10px;
+      padding:9px 18px;color:#fff;font-weight:600;font-size:14px;cursor:pointer}
+    .sbtn:hover{opacity:.85}
+    .welcome{flex:1;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;color:var(--muted);gap:10px}
+    .welcome h2{color:var(--text);font-size:18px}
+    ::-webkit-scrollbar{width:4px}
+    ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo"><div class="logo-icon">💬</div> WhatsApp AI Agent</div>
+  <div class="right">
+    <span style="color:var(--muted)">Manual</span>
+    <label class="toggle">
+      <input type="checkbox" id="tog" onchange="toggleAgent()"/>
+      <span class="slider"></span>
+    </label>
+    <span style="color:var(--green)">AI Agent</span>
+    <div class="pill" id="pill">● Offline</div>
+  </div>
+</header>
+<div class="main">
+  <div class="sidebar">
+    <h3>Conversations</h3>
+    <div class="clist" id="clist">
+      <div class="empty">No messages yet.<br/>Scan QR on UltraMsg<br/>and send a test message!</div>
+    </div>
+  </div>
+  <div class="panel" id="panel">
+    <div class="welcome">
+      <div style="font-size:48px">🤖</div>
+      <h2>Select a conversation</h2>
+      <p>Messages will appear here automatically</p>
+    </div>
+  </div>
+</div>
+<script>
+  let sel=null,aiOn=false;
+
+  async function loadStatus(){
+    const d=await fetch('/api/status').then(r=>r.json());
+    aiOn=d.agentEnabled;
+    document.getElementById('tog').checked=aiOn;
+    const p=document.getElementById('pill');
+    p.textContent=aiOn?'● AI Active':'● Manual';
+    p.className=aiOn?'pill on':'pill';
+  }
+
+  async function loadContacts(){
+    const list=await fetch('/api/contacts').then(r=>r.json());
+    const el=document.getElementById('clist');
+    if(!list.length){
+      el.innerHTML='<div class="empty">No messages yet.<br/>Scan QR on UltraMsg<br/>and send a test message!</div>';
+      return;
+    }
+    el.innerHTML=list.map(c=>`
+      <div class="contact ${c.phone===sel?'active':''}"
+        onclick="openChat('${esc(c.phone)}','${esc(c.name)}')">
+        <div class="av">${(c.name||c.phone)[0].toUpperCase()}</div>
+        <div class="ci">
+          <div class="cn">${esc(c.name)}</div>
+          <div class="cp">${esc(c.lastMessage||'No messages')}</div>
+        </div>
+        <div class="cb">${c.messageCount}</div>
+      </div>`).join('');
+  }
+
+  async function openChat(phone,name){
+    sel=phone; loadContacts();
+    const d=await fetch(`/api/chat/${encodeURIComponent(phone)}`).then(r=>r.json());
+    document.getElementById('panel').innerHTML=`
+      <div class="chat-head">
+        <div class="av">${(name||phone)[0].toUpperCase()}</div>
+        <div><div class="ct">${esc(name)}</div>
+          <div class="cph">${phone}</div></div>
+      </div>
+      <div class="msgs" id="msgs">
+        ${d.messages.length?d.messages.map(m=>{
+          const out=m.role==='assistant';
+          const t=m.timestamp?new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}):'';
+          return `<div class="mw ${out?'out':''}"><div>
+            <div class="bbl ${out?'out':'in'}">${esc(m.content)}</div>
+            <div class="bm">${t}${out&&aiOn?'<span class="ai">AI</span>':''}</div>
+          </div></div>`;
+        }).join(''):'<div style="text-align:center;color:var(--muted);margin-top:30px">No messages yet</div>'}
+      </div>
+      <div class="send-box">
+        <textarea id="inp" placeholder="Type a message…"
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+        <button class="sbtn" onclick="sendMsg()">Send</button>
+      </div>`;
+    const m=document.getElementById('msgs');
+    if(m) m.scrollTop=m.scrollHeight;
+  }
+
+  async function sendMsg(){
+    const inp=document.getElementById('inp');
+    const msg=inp?.value?.trim();
+    if(!msg||!sel) return;
+    inp.value=''; inp.style.height='auto';
+    const name=document.querySelector('.contact.active .cn')?.textContent||sel;
+    await fetch('/api/send',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({phone:sel,message:msg})});
+    openChat(sel,name);
+  }
+
+  async function toggleAgent(){
+    await fetch('/api/toggle',{method:'POST'});
+    loadStatus();
+  }
+
+  function esc(s){
+    return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  loadStatus(); loadContacts();
+  setInterval(()=>{
+    loadStatus(); loadContacts();
+    if(sel){
+      const n=document.querySelector('.contact.active .cn')?.textContent||sel;
+      openChat(sel,n);
+    }
+  },3000);
+</script>
+</body>
+</html>
